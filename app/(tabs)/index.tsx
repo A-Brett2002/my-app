@@ -1,98 +1,226 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// App.js
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Keyboard,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function App() {
+  const [input, setInput] = useState("");
+  const [tasks, setTasks] = useState([]);
 
-export default function HomeScreen() {
+  // Cargar tareas al iniciar
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("@tasks");
+        if (stored) {
+          setTasks(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log("Error cargando tareas", e);
+      }
+    };
+    loadTasks();
+  }, []);
+
+  // Guardar tareas cada vez que cambien
+  useEffect(() => {
+    const saveTasks = async () => {
+      try {
+        await AsyncStorage.setItem("@tasks", JSON.stringify(tasks));
+      } catch (e) {
+        console.log("Error guardando tareas", e);
+      }
+    };
+    saveTasks();
+  }, [tasks]);
+
+  const addTask = () => {
+    const text = input.trim();
+    if (!text) return;
+    const newTask = {
+      id: Date.now().toString(),
+      text,
+      done: false,
+    };
+    setTasks((prev) => [newTask, ...prev]);
+    setInput("");
+    Keyboard.dismiss();
+  };
+
+  const toggleDone = (id) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
+    );
+  };
+
+  const deleteTask = (id) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const clearAll = () => {
+    if (tasks.length === 0) return;
+    Alert.alert("Confirmar", "¿Deseas eliminar todas las tareas?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Eliminar", style: "destructive", onPress: () => setTasks([]) },
+    ]);
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={[styles.taskRow, item.done && styles.taskRowDone]}>
+      <TouchableOpacity
+        onPress={() => toggleDone(item.id)}
+        style={styles.taskTextWrap}
+      >
+        <Text style={[styles.taskText, item.done && styles.taskTextDone]}>
+          {item.text}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          onPress={() => toggleDone(item.id)}
+          style={styles.actionBtn}
+        >
+          <Text style={styles.actionText}>
+            {item.done ? "Desmarcar" : "Completar"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => deleteTask(item.id)}
+          style={[styles.actionBtn, styles.deleteBtn]}
+        >
+          <Text style={[styles.actionText, styles.deleteText]}>Eliminar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Lista Rápida de Actividades</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="Escribe una tarea..."
+          value={input}
+          onChangeText={setInput}
+          onSubmitEditing={addTask}
+          returnKeyType="done"
+        />
+        <TouchableOpacity style={styles.addBtn} onPress={addTask}>
+          <Text style={styles.addBtnText}>Agregar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.counterRow}>
+        <Text style={styles.counterText}>
+          Total tareas: <Text style={styles.counterNumber}>{tasks.length}</Text>
+        </Text>
+        <TouchableOpacity onPress={clearAll} style={styles.clearBtn}>
+          <Text style={styles.clearBtnText}>Limpiar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={tasks}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            No hay tareas. Agrega la primera.
+          </Text>
+        }
+        contentContainerStyle={tasks.length === 0 && styles.emptyContainer}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, padding: 16, backgroundColor: "#f7f9fc" },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#0b3d91",
+    marginBottom: 12,
+    textAlign: "center",
   },
-  stepContainer: {
-    gap: 8,
+
+  inputRow: { flexDirection: "row", marginBottom: 12 },
+  input: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e0e6ef",
+    fontSize: 16,
+  },
+  addBtn: {
+    marginLeft: 8,
+    backgroundColor: "#0b7bff",
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  addBtnText: { color: "#fff", fontWeight: "600" },
+
+  counterRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  counterText: { fontSize: 14, color: "#333" },
+  counterNumber: { fontWeight: "700", color: "#0b7bff" },
+  clearBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "#ffecec",
+    borderRadius: 6,
   },
+  clearBtnText: { color: "#d00", fontWeight: "600" },
+
+  taskRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#e6eefc",
+  },
+  taskRowDone: { backgroundColor: "#eef9f1" },
+  taskTextWrap: { flex: 1 },
+  taskText: { fontSize: 16, color: "#222" },
+  taskTextDone: { textDecorationLine: "line-through", color: "#6b6b6b" },
+
+  actions: { flexDirection: "row", marginLeft: 8 },
+  actionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "#eef3ff",
+    marginLeft: 6,
+  },
+  actionText: { color: "#0b3d91", fontWeight: "600", fontSize: 12 },
+  deleteBtn: { backgroundColor: "#fff0f0" },
+  deleteText: { color: "#b00000" },
+
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { color: "#888", fontSize: 16, textAlign: "center" },
 });
