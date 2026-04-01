@@ -1,3 +1,4 @@
+// App.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,9 +13,16 @@ import {
   View,
 } from "react-native";
 
-export default function App() {
-  const [input, setInput] = useState("");
-  const [tasks, setTasks] = useState([]);
+// Definimos el tipo de cada tarea
+interface Task {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export default function App(): JSX.Element {
+  const [input, setInput] = useState<string>("");
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   // Cargar tareas al iniciar
   useEffect(() => {
@@ -22,7 +30,8 @@ export default function App() {
       try {
         const stored = await AsyncStorage.getItem("@tasks");
         if (stored) {
-          setTasks(JSON.parse(stored));
+          const parsed: Task[] = JSON.parse(stored);
+          setTasks(parsed);
         }
       } catch (e) {
         console.log("Error cargando tareas", e);
@@ -43,10 +52,10 @@ export default function App() {
     saveTasks();
   }, [tasks]);
 
-  const addTask = () => {
+  const addTask = (): void => {
     const text = input.trim();
     if (!text) return;
-    const newTask = {
+    const newTask: Task = {
       id: Date.now().toString(),
       text,
       done: false,
@@ -56,17 +65,17 @@ export default function App() {
     Keyboard.dismiss();
   };
 
-  const toggleDone = (id) => {
+  const toggleDone = (id: string): void => {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
     );
   };
 
-  const deleteTask = (id) => {
+  const deleteTask = (id: string): void => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const clearAll = () => {
+  const clearAll = (): void => {
     if (tasks.length === 0) return;
     Alert.alert("Confirmar", "¿Deseas eliminar todas las tareas?", [
       { text: "Cancelar", style: "cancel" },
@@ -74,7 +83,7 @@ export default function App() {
     ]);
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: Task }) => (
     <View style={[styles.taskRow, item.done && styles.taskRowDone]}>
       <TouchableOpacity
         onPress={() => toggleDone(item.id)}
