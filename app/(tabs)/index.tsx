@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { JSX } from "react/jsx-runtime";
 
 // Definimos el tipo de cada tarea
 interface Task {
